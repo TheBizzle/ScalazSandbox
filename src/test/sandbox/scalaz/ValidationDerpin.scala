@@ -11,7 +11,7 @@ import scalaz._
  * Time: 11:27 PM
  */
 
-class MyTest extends FunSuite with BeforeAndAfterEach with ShouldMatchers {
+class ValidationDerpin extends FunSuite with BeforeAndAfterEach with ShouldMatchers {
 
   test("something simple and derpy") {
 

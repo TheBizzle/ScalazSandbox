@@ -1,8 +1,12 @@
 package org.bizzle.sandbox.scalaz
 
-import org.scalatest.{BeforeAndAfterEach, FunSuite}
-import org.scalatest.matchers.ShouldMatchers
-import scalaz._
+import
+  org.scalatest.{ BeforeAndAfterEach, FunSuite, matchers },
+    matchers.ShouldMatchers
+
+import
+  scalaz._,
+    Scalaz._
 
 /**
  * Created by IntelliJ IDEA.
@@ -13,67 +17,115 @@ import scalaz._
 
 class ValidationDerpin extends FunSuite with BeforeAndAfterEach with ShouldMatchers {
 
-  test("something simple and derpy") {
+  def validateNumOpt(x: Option[Int]) : ValidationNel[String, Int] = if (x.isEmpty) "This is a `None`!\n".failNel else x.get.successNel[String]
+  def numOptValidationToString(v: ValidationNel[String, Int]) : String = v fold (
+    (f => s"Way to go!\n${f.toList.mkString}You dun good.\n"),
+    (s => s"Success!  The answer was: $s\n")
+  )
 
-    def validateNumOpt(x: Option[Int]) : Validation[String, Int] = if (x.isEmpty) Failure("This is a `None`!\n") else Success(x.get)
+  test("something simple and successful") {
 
-    val opts = Seq(Option(1), Option(2), Option(5), Option(14))
-    val mappedOpts = opts map (_ flatMap (x => if ((x % 2) == 0) Option(x) else None))
-    val validations = mappedOpts map (validateNumOpt(_))
+    def refineNumOpt(x: Option[Int]) : Option[Int] = x flatMap (y => if ((y % 2) == 0) Option(y) else None)
+    val f = (refineNumOpt _) andThen (validateNumOpt _)
 
-    println (validations reduce (_ >>*<< _) fold ({ "Way to go!\n" + _ + "You dun good." }, (_.toString))); println(); println()
+    val validated = (f(Option(4)) |@| f(Option(2)) |@| f(Option(8)) |@| f(Option(14))) {
+      (four, two, eight, fourteen) => four + two + eight + fourteen
+    }
+
+    println(numOptValidationToString(validated))
     
   }
 
-  test("something simple, derpy, and faily") {
+  test("something simple and derpy and semi-faily") {
 
-    def validateNumOpt(x: Option[Int]) : Validation[String, Int] = if (x.isEmpty) Failure("This is a `None`!\n") else Success(x.get)
+    def refineNumOpt(x: Option[Int]) : Option[Int] = x flatMap (y => if ((y % 2) == 0) Option(y) else None)
+    val f = (refineNumOpt _) andThen (validateNumOpt _)
 
-    val opts = Seq(Option(1), Option(2), Option(5), Option(14))
-    val mappedOpts = opts map (_ flatMap (x => if (false) Option(x) else None))
-    val validations = mappedOpts map (validateNumOpt(_))
+    val validated = (f(Option(1)) |@| f(Option(2)) |@| f(Option(5)) |@| f(Option(14))) {
+      (one, two, five, fourteen) => one + two + five + fourteen
+    }
 
-    println (validations reduce (_ >>*<< _) fold ({ "Way to go!\n" + _ + "You dun good." }, (_.toString))); println(); println()
+    println(numOptValidationToString(validated))
+    
+  }
+
+  test("something simple, derpy, and fully-faily") {
+
+    def refineNumOpt(x: Option[Int]) : Option[Int] = x flatMap (y => if (false) Option(y) else None)
+    val f = (refineNumOpt _) andThen (validateNumOpt _)
+
+    val validated = (f(Option(1)) |@| f(Option(2)) |@| f(Option(5)) |@| f(Option(14))) {
+      (one, two, five, fourteen) => one + two + five + fourteen
+    }
+
+    println(numOptValidationToString(validated))
+    println()
 
   }
 
-  test("some strings") {
-
-    def validateList(xs: List[String]) : Validation[String, String] = {
-      if (xs.isEmpty)        Failure("Empty entry")
-      else if (xs.size == 1) Failure("No data for " + xs(0))
-      else                   Success(xs.mkString("\n"))
+  def validateList(strings: List[String]) : ValidationNel[String, String] =
+    strings match {
+      case Nil      => "An entry was entirely empty!".failNel
+      case x :: Nil => s"No data for ${x.init}".failNel
+      case x :: xs  => strings.mkString(" ").successNel[String]
     }
 
-    val name = List("Name:", "Johnny Appleseed", "The Third")
-    val age = List("Age:", "34")
-    val address = List()
+  def personValidationToString(v: ValidationNel[String, String]) : String = v fold (
+    (f => s"Failed to create, due to the following errors:\n${f.toList.mkString}"),
+    (s => s"Success!  Here's our dude:\n$s")
+  )
+
+  test("some strings (good)") {
+
+    val name       = List("Name:", "Johnny Appleseed", "The Third")
+    val age        = List("Age:", "34")
+    val address    = List("Address:", "123", "Fake", "Street")
     val occupation = List("Occupation:", "Horticulturist")
 
-    val lists = Seq(name, age, address, occupation)
-    val validations = lists map (validateList(_)) map (_ map (_ + "\n\n"))
+    val f = validateList _
 
-    println (validations reduce (_ >>*<< _) fold ({ "Failed to create due to errors:\n" + _ }, (identity))); println(); println()
+    val validated = (f(name) |@| f(age) |@| f(address) |@| f(occupation)) {
+      (nm, age, addr, occ) => Seq(nm, age, addr, occ).mkString("\n")
+    }
+
+    println(personValidationToString(validated))
+    println()
+
+  }
+
+  test("some strings (with empty entry)") {
+
+    val name       = List("Name:", "Johnny Appleseed", "The Third")
+    val age        = List("Age:", "34")
+    val address    = List()
+    val occupation = List("Occupation:", "Horticulturist")
+
+    val f = validateList _
+
+    val validated = (f(name) |@| f(age) |@| f(address) |@| f(occupation)) {
+      (nm, age, addr, occ) => Seq(nm, age, addr, occ).mkString("\n")
+    }
+
+    println(personValidationToString(validated))
+    println()
 
   }
 
   test("""some strings (with a too-short "Address" entry""") {
 
-    def validateList(xs: List[String]) : Validation[String, String] = {
-      if (xs.isEmpty)        Failure("Empty entry")
-      else if (xs.size == 1) Failure("No data for " + xs(0))
-      else                   Success(xs.mkString("\n"))
-    }
-
-    val name = List("Name:", "Johnny Appleseed", "The Third")
-    val age = List("Age:", "34")
-    val address = List("Address:")
+    val name       = List("Name:", "Johnny Appleseed", "The Third")
+    val age        = List("Age:", "34")
+    val address    = List("Address:")
     val occupation = List("Occupation:", "Horticulturist")
 
-    val lists = Seq(name, age, address, occupation)
-    val validations = lists map (validateList(_)) map (_ map (_ + "\n\n"))
+    val f = validateList _
 
-    println (validations reduce (_ >>*<< _) fold ({ "Failed to create due to errors:\n" + _ }, (identity)))
+    val validated = (f(name) |@| f(age) |@| f(address) |@| f(occupation)) {
+      (nm, age, addr, occ) => Seq(nm, age, addr, occ).mkString("\n")
+    }
+
+    println(personValidationToString(validated))
+    println()
 
   }
 

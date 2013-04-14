@@ -1,4 +1,4 @@
-package sandbox.scalaz
+package org.bizzle.sandbox.scalaz
 
 import org.scalatest.{BeforeAndAfterEach, FunSuite}
 import org.scalatest.matchers.ShouldMatchers

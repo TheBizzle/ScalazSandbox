@@ -4,6 +4,8 @@ scalaVersion := "2.10.1"
 
 scalaSource in Compile <<= baseDirectory(_ / "src" / "test")
 
+scalaSource in Test <<= baseDirectory(_ / "src" / "test")
+
 resolvers ++= Seq("Sonatype snapshots" at "http://oss.sonatype.org/content/repositories/snapshots/")
 
 libraryDependencies ++= Seq(

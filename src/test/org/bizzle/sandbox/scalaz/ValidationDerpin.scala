@@ -17,49 +17,44 @@ import
 
 class ValidationDerpin extends FunSuite with BeforeAndAfterEach with ShouldMatchers {
 
-  def validateNumOpt(x: Option[Int]) : ValidationNel[String, Int] = if (x.isEmpty) "This is a `None`!\n".failNel else x.get.successNel[String]
-  def numOptValidationToString(v: ValidationNel[String, Int]) : String = v fold (
-    (f => s"Way to go!\n${f.toList.mkString}You dun good.\n"),
-    (s => s"Success!  The answer was: $s\n")
-  )
+  type VII = ValidationNel[Int, Int]
+
+  def refineNumOpt(guard: Int => Boolean) : (Int) => VII = (x: Int) => if (guard(x)) x.successNel[Int] else x.failNel
+  def failNel(xs: Int*) : VII = NonEmptyList[Int](xs.head, xs.tail: _*).fail
 
   test("something simple and successful") {
 
-    def refineNumOpt(x: Option[Int]) : Option[Int] = x flatMap (y => if ((y % 2) == 0) Option(y) else None)
-    val f = (refineNumOpt _) andThen (validateNumOpt _)
+    val f = (refineNumOpt((y: Int) => (y % 2) == 0))
 
-    val validated = (f(Option(4)) |@| f(Option(2)) |@| f(Option(8)) |@| f(Option(14))) {
+    val validated = (f(4) |@| f(2) |@| f(8) |@| f(14)) {
       (four, two, eight, fourteen) => four + two + eight + fourteen
     }
 
-    println(numOptValidationToString(validated))
+    validated should be (28.successNel[String])
     
   }
 
   test("something simple and derpy and semi-faily") {
 
-    def refineNumOpt(x: Option[Int]) : Option[Int] = x flatMap (y => if ((y % 2) == 0) Option(y) else None)
-    val f = (refineNumOpt _) andThen (validateNumOpt _)
+    val f = (refineNumOpt((y: Int) => (y % 2) == 0))
 
-    val validated = (f(Option(1)) |@| f(Option(2)) |@| f(Option(5)) |@| f(Option(14))) {
+    val validated = (f(1) |@| f(2) |@| f(5) |@| f(14)) {
       (one, two, five, fourteen) => one + two + five + fourteen
     }
 
-    println(numOptValidationToString(validated))
+    validated should be (failNel(1, 5))
     
   }
 
   test("something simple, derpy, and fully-faily") {
 
-    def refineNumOpt(x: Option[Int]) : Option[Int] = x flatMap (y => if (false) Option(y) else None)
-    val f = (refineNumOpt _) andThen (validateNumOpt _)
+    val f = (refineNumOpt((_: Int) => false))
 
-    val validated = (f(Option(1)) |@| f(Option(2)) |@| f(Option(5)) |@| f(Option(14))) {
+    val validated = (f(1) |@| f(2) |@| f(5) |@| f(14)) {
       (one, two, five, fourteen) => one + two + five + fourteen
     }
 
-    println(numOptValidationToString(validated))
-    println()
+    validated should be (failNel(1, 2, 5, 14))
 
   }
 

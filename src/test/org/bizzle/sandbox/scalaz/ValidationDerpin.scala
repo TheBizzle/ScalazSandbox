@@ -5,6 +5,10 @@ import
     matchers.ShouldMatchers
 
 import
+  shapeless.{ :: => hcons, _ },
+    Tuples._
+
+import
   scalaz._,
     Scalaz._
 
@@ -24,9 +28,23 @@ class ValidationDerpin extends FunSuite with BeforeAndAfterEach with ShouldMatch
 
   test("something simple and successful") {
 
-    val f = (refineNumOpt((y: Int) => (y % 2) == 0))
-
-    val validated = (f(4) |@| f(2) |@| f(8) |@| f(14)) {
+    // Tinkering with mapping the validation function onto the tuple.
+    // I'm finding it very difficult to generalize this into something that
+    // isn't simply a mess of boilerplate (i.e. this)
+    // Ideally, I'd love to be able to give the function and the tuple and
+    // get back the applicative.  That'll be boilerplate-y no matter what,
+    // though, so I'd settle for just taking the function and tuple and
+    // getting back `refined`
+    // Ideally, I'd love to be able to give the function and the tuple and
+    // get back the applicative.  That'll be boilerplate-y no matter what,
+    // though, so I'd settle for just taking the function and tuple and
+    // getting back `refined`.  Even that is difficult, though; Shapeless
+    // is secretly using too much implicit voodoo....
+    val f = refineNumOpt((y: Int) => (y % 2) == 0)
+    object refine extends (Int -> VII) ((x: Int) => f(x))
+    val refined = (4, 2, 8, 14).hlisted.map(refine).tupled
+    val applicative = refined fold (_ |@| _ |@| _ |@| _)
+    val validated = applicative {
       (four, two, eight, fourteen) => four + two + eight + fourteen
     }
 
